@@ -1,0 +1,41 @@
+{
+    "max_courage" : 100,
+    "topic_order" : [3, 4, 2],
+    "topic_timing" : [0, 40, 80],
+    "topic_duration" : [40, 40, 40],
+    "barrage": [
+        {
+            "mode" : "noTorpedo",
+            "tensity" : 15,
+            "dir" : ["disc", 0, 180],
+            "start" : 0,
+            "end" : 119,
+            "max_spd" : 0.5,
+            "min_spd" : 0.3
+        },{
+            "mode" : "noTorpedo",
+            "tensity" : 12,
+            "dir" : ["disc", 90, 270],
+            "start" : 15,
+            "end" : 119,
+            "max_spd" : 0.4,
+            "min_spd" : 0.2
+        },{
+            "mode" : "torpedo",
+            "tensity" : 4,
+            "dir" : ["disc", 90, 270],
+            "start" : 20,
+            "end" : 50,
+            "max_spd" : 0.2,
+            "min_spd" : 0.2
+        },{
+            "mode" : "torpedo",
+            "tensity" : 4,
+            "dir" : ["disc", 90, 270],
+            "start" : 60,
+            "end" : 90,
+            "max_spd" : 0.2,
+            "min_spd" : 0.2
+        }
+    ]
+}

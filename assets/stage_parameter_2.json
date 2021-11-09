@@ -1,0 +1,33 @@
+{
+    "max_courage" : 50,
+    "topic_order" : [1, 2, 4, 1, 0, 3],
+    "topic_timing" : [0, 20, 40, 60, 80, 100],
+    "topic_duration" : [20, 20, 20, 20, 20, 20],
+    "barrage": [
+        {
+            "mode" : "noTorpedo",
+            "tensity" : 10,
+            "dir" : ["cont", -20, 20, 160, 200],
+            "start" : 0,
+            "end" : 100,
+            "max_spd" : 1.0,
+            "min_spd" : 0.5
+        },{
+            "mode" : "random",
+            "tensity" : 8,
+            "dir" : ["cont", 60, 120, 240, 300],
+            "start" : 20,
+            "end" : 119,
+            "max_spd" : 0.8,
+            "min_spd" : 0.5
+        },{
+            "mode" : "noTorpedo",
+            "tensity" : 8,
+            "dir" : ["cont", 30, 60, 120, 150, 210, 240, 300, 330],
+            "start" : 40,
+            "end" : 110,
+            "max_spd" : 1.4,
+            "min_spd" : 1.0
+        }
+    ]
+}

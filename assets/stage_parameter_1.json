@@ -1,0 +1,28 @@
+{
+    "max_courage" : 80,
+    "topic_order" : [0, 1, 2, 3],
+    "topic_timing" : [0, 30, 60, 90],
+    "topic_duration" : [30, 30, 30, 30],
+    "barrage": [
+        {
+            "mode" : "random",
+            "tensity" : 10,
+            "dir" : ["disc", 0, 180],
+            "start" : 0,
+            "end" : 119,
+            "max_spd" : 1.0,
+            "min_spd" : 0.3
+        },{
+            "mode" : "random",
+            "tensity" : 5,
+            "dir" : ["cont", -15, 15, 165, 195],
+            "start" : 45,
+            "end" : 119,
+            "max_spd" : 1.2,
+            "min_spd" : 0.6
+        }
+    ],
+    "special_barrage": [
+        [-20, 135, "1", 0, 5, false]
+    ]
+}
