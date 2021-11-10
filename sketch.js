@@ -129,6 +129,11 @@ function setup(){
   _assets.set('explode', new asset('sound', 'assets/soundeffects/sfx_exp_short_hard2.wav'));
   _assets.set('success', new asset('sound', 'assets/soundeffects/sfx_exp_odd5.wav'));
 
+  // load background music
+  _assets.set('music_1', new asset('sound', 'assets/soundeffects/Cluster Block v0_8.mp3'));
+  _assets.set('music_2', new asset('sound', 'assets/soundeffects/Shake and Bake.mp3'));
+  _assets.set('music_3', new asset('sound', 'assets/soundeffects/S31-Through the Portal.ogg'));
+  
   // load the font
   pixel_font = loadFont('assets/Minecraft.ttf');
   text_font = pixel_font;
@@ -498,7 +503,8 @@ class stageManager{
             this.topicTimer = setInterval(function(){_stageManager.updateTalk();}, 100);
   
             _protagonist.control = true; // realse the protagonist
-            // load the dynamic objs data
+
+            this.stages[this.curStage].music.play(); // start to play the background music
             this.statusNum++;
           }
           break;
@@ -514,6 +520,7 @@ class stageManager{
             // set up the score board
             _scoreBoardSpace.textLeading(22);
             _spriteManager.score_board.enableButton(true); // enable the buttons on score board
+            this.stages[this.curStage].music.stop(); // stop playing the background music
             this.statusNum++;
           }
           break;
@@ -644,6 +651,9 @@ class stage{
 
     // the topic & barrage data of the stage
     this.data = data;
+
+    // back ground music
+    this.music = _assets.get('music_' + this.num).content;
 
     // max courage required to speak out
     this.max_courage = this.data.max_courage || 100;
