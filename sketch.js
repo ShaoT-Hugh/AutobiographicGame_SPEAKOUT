@@ -133,6 +133,7 @@ function setup(){
   _assets.set('absorbed', new asset('sound', 'assets/soundeffects/sfx_lowhealth_alarmloop6.wav'));
   _assets.set('explode', new asset('sound', 'assets/soundeffects/sfx_exp_short_hard2.wav'));
   _assets.set('success', new asset('sound', 'assets/soundeffects/sfx_exp_odd5.wav'));
+  _assets.set('checkout', new asset('sound', 'assets/soundeffects/bell_03.ogg'));
 
   // load background music
   _assets.set('music_0', new asset('sound', 'assets/soundeffects/Cluster Block v0_8.mp3'));
@@ -527,6 +528,7 @@ class stageManager{
             _scoreBoardSpace.textLeading(22);
             _spriteManager.score_board.enableButton(true); // enable the buttons on score board
             this.stages[this.curStage].music.stop(); // stop playing the background music
+            _assets.get('checkout').content.play(); // play the checkout sound
             this.statusNum++;
           }
           break;
@@ -1002,8 +1004,8 @@ class scoreboard extends sprite{
   // result grade
   comment(score){
     if(score <= 6) return 1;
-    else if(score >= 12) return 2;
-    else return 3;
+    else if(score >= 12) return 3;
+    else return 2;
   }
   // render the score board
   render(canvas = _scoreBoardSpace){
