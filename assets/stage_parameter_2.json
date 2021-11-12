@@ -8,15 +8,15 @@
             "mode" : "noTorpedo",
             "tensity" : 10,
             "dir" : ["cont", -20, 20, 160, 200],
-            "start" : 0,
-            "end" : 100,
+            "start" : 10,
+            "end" : 110,
             "max_spd" : 1.0,
             "min_spd" : 0.5
         },{
             "mode" : "random",
             "tensity" : 8,
             "dir" : ["cont", 60, 120, 240, 300],
-            "start" : 20,
+            "start" : 0,
             "end" : 119,
             "max_spd" : 0.8,
             "min_spd" : 0.5

@@ -84,6 +84,11 @@ function setup(){
   _assets.set('board_X', new asset('static_image', 'assets/graphics/board_X.png'));
   _assets.set('board_Y', new asset('static_image', 'assets/graphics/board_Y.png'));
   _assets.set('board_O', new asset('static_image', 'assets/graphics/board_O.png'));
+  _assets.set('topic_A', new asset('static_image', 'assets/graphics/topic_A.png'));
+  _assets.set('topic_B', new asset('static_image', 'assets/graphics/topic_B.png'));
+  _assets.set('topic_X', new asset('static_image', 'assets/graphics/topic_X.png'));
+  _assets.set('topic_Y', new asset('static_image', 'assets/graphics/topic_Y.png'));
+  _assets.set('topic_O', new asset('static_image', 'assets/graphics/topic_O.png'));
 
   _assets.set('courage_gauge', new asset('static_image', 'assets/graphics/courage_gauge.png'));
   _assets.set('courage_gauge_full', new asset('static_image', 'assets/graphics/courage_gauge_full.png'));
@@ -130,7 +135,8 @@ function setup(){
   _assets.set('success', new asset('sound', 'assets/soundeffects/sfx_exp_odd5.wav'));
 
   // load background music
-  _assets.set('music_1', new asset('sound', 'assets/soundeffects/Cluster Block v0_8.mp3'));
+  _assets.set('music_0', new asset('sound', 'assets/soundeffects/Cluster Block v0_8.mp3'));
+  _assets.set('music_1', new asset('sound', 'assets/soundeffects/The Adventure Begins 8-bit remix.ogg'));
   _assets.set('music_2', new asset('sound', 'assets/soundeffects/Shake and Bake.mp3'));
   _assets.set('music_3', new asset('sound', 'assets/soundeffects/S31-Through the Portal.ogg'));
   
@@ -504,7 +510,7 @@ class stageManager{
   
             _protagonist.control = true; // realse the protagonist
 
-            this.stages[this.curStage].music.play(); // start to play the background music
+            this.stages[this.curStage].music.loop(); // start to play the background music
             this.statusNum++;
           }
           break;
@@ -543,12 +549,14 @@ class stageManager{
           if(this.fadeAlp <= 0){
             this.statusNum++;
             _stageManager.stages[0].enableButton(true); // enable the buttons on menu
+            this.stages[0].music.loop(); // start to play the background music
           }
           break;
         case 1: // status 1 -> 2: waiting to change stage
           if(this.curStage !== this.nextStage){
             this.statusNum++;
             _stageManager.stages[0].enableButton(false); // disable the buttons on menu
+            this.stages[0].music.stop(); // stop playing the background music
             rectMode(CORNER);
           }
           break;
@@ -654,6 +662,7 @@ class stage{
 
     // back ground music
     this.music = _assets.get('music_' + this.num).content;
+    this.music.setVolume(0.7);
 
     // max courage required to speak out
     this.max_courage = this.data.max_courage || 100;
@@ -684,10 +693,13 @@ class menu{
 
     this.buttons = [];
     for(let i = 0; i < 3; i++){
-      this.buttons.push(new cusButton(_Width/2 - 104, 150 + i * 60, 210, 42,
+      this.buttons.push(new cusButton(_Width/2 - 121, 150 + i * 60, 242, 48,
         function(){_stageManager.nextStage = i + 1;},
         buttonImg, "STAGE_" + (i + 1), 0));
     }
+
+    this.music = _assets.get('music_0').content; // background music of menu stage
+    this.music.setVolume(0.6);
   }
 
   // reset the menu stage
@@ -735,8 +747,9 @@ class spriteManager{
     // Initialize all the sprites
     this.topic_board = new topicBoard( // the topic board
       width/2, -20, width/2, 17,
-      [_assets.get('board_A').content, _assets.get('board_B').content, _assets.get('board_X').content,
-      _assets.get('board_Y').content, _assets.get('board_O').content
+      [_assets.get('board_A').content, _assets.get('board_B').content, _assets.get('board_X').content, _assets.get('board_Y').content,
+      _assets.get('board_O').content, _assets.get('topic_A').content, _assets.get('topic_B').content, _assets.get('topic_X').content,
+      _assets.get('topic_Y').content, _assets.get('topic_O').content
     ]);
     this.courage_gauge = new courageGauge( // the courage gauge
       width/2, _playSpace.height + 50, width/2, _playSpace.height - 20,
@@ -754,10 +767,12 @@ class spriteManager{
   // reset all the sprites
   reset(){
     this.topic_board.reset();
+    this.topic_board.clear();
     this.courage_gauge.reset();
     this.count_down = 3;
     this.play_countdown.reset();
     this.score_board.reset();
+    this.score_board.clear();
   }
   // render the sprite to the canvas
   render(){
@@ -829,6 +844,12 @@ class topicBoard extends sprite{
     this.topicTotalTime = 0; // total time of the current topic
     this.topicRemainTime = 0; // remaining time of the current topic
   }
+  // clear the topic board
+  clear(){
+    this.curTopic = -1;
+    this.topicTotalTime = 0;
+    this.topicRemainTime = 0;
+  }
   // change to a new topic
   change(newTopic, duration){
     this.curTopic = newTopic;
@@ -839,15 +860,23 @@ class topicBoard extends sprite{
   render(canvas = window){
     this.move();
 
-    let x = this.pos_x, y = this.pos_y;
+    let x = this.pos_x, y = this.pos_y, remainTime = this.topicRemainTime;
     if(x === this.targt_x && y === this.targt_y) this.isReady = true;
     else this.isReady = false;
 
     canvas.push();
     canvas.imageMode(CENTER);
     canvas.fill('rgb(' + topic_colors[this.curTopic] + ')');
-    canvas.rect(width/2, _sceneheight, 1 + this.topicRemainTime / this.topicTotalTime * (width - 1), 6); // progress bar
     canvas.image(this.imgs[this.curTopic], x, y);
+    canvas.rect(width/2, _sceneheight, 1 + remainTime / this.topicTotalTime * (width - 1), 6); // progress bar
+    canvas.image(this.imgs[this.curTopic + 5], width/2, _sceneheight + 3); // topic icon
+    // print remaining time
+    canvas.fill(0);
+    canvas.textFont(pixel_font);
+    canvas.textSize(16);
+    canvas.textAlign(CENTER);
+    canvas.text(double(remainTime), width/2, _sceneheight + 7);
+    // canvas.text(); // remaining time of the current topic
     canvas.pop();
   }
 }
@@ -858,7 +887,7 @@ class courageGauge extends sprite{
     this.curTopic = 0;
     this.value = [0, 0, 0, 0, 0]; // courage power value
     this.target_value = [0, 0, 0, 0, 0];
-    this.v_change_spd = 30; // bigger to slower the changing spd
+    this.v_change_spd = 20; // bigger to slow down the changing spd
     this.size = 100; // size is used to calculate collision; do not remove it
   }
 
@@ -929,6 +958,13 @@ class courageGauge extends sprite{
     canvas.image(this.imgs[2], x, y - 11);
     canvas.tint(255, 255 * main_value / max_courage);
     canvas.image(this.imgs[3], x, y - 12);
+
+    // numbers showing the current courage value
+    canvas.textFont(pixel_font);
+    canvas.textSize(18);
+    canvas.textAlign(RIGHT);
+    canvas.fill(255);
+    canvas.text(round(main_value) + "/" + max_courage, x - 220, y - 24);
     canvas.pop();
   }
 }
@@ -957,6 +993,18 @@ class scoreboard extends sprite{
     this.buttons[0].enabled = isEnabled;
     this.buttons[1].enabled = isEnabled;
   }
+  // reset the score data
+  clear(){
+    this.frag_collected = 0;
+    this.torpedo_bumped = 0;
+    this.success_speak = 0;
+  }
+  // result grade
+  comment(score){
+    if(score <= 6) return 1;
+    else if(score >= 12) return 2;
+    else return 3;
+  }
   // render the score board
   render(canvas = _scoreBoardSpace){
     let x = this.pos_x, y = this.pos_y;
@@ -970,11 +1018,23 @@ class scoreboard extends sprite{
     // score board texts
     canvas.push();
     canvas.textFont(text_font);
-    // render "STAGE COMPLETE"
-    canvas.fill(255, 51, 0);
+    // render rate comment
     canvas.textAlign(CENTER);
-    canvas.textSize(20);
-    canvas.text("STAGE COMPLETE", canvas.width/2, 42);
+    canvas.textSize(19);
+    switch(this.comment(this.success_speak)){
+      case 1:
+        canvas.fill(102, 255, 255);
+        canvas.text("STILL NEED IMPROVE", canvas.width/2, 42);
+        break;
+      case 2:
+        canvas.fill(0, 204, 0);
+        canvas.text("GENERALLY GOOD!", canvas.width/2, 42);
+        break;
+      case 3:
+        canvas.fill(255, 51, 0);
+        canvas.text("YOU'RE SO AMAZING!", canvas.width/2, 42);
+        break;
+    }
 
     canvas.textSize(16);
     // render scoring item
@@ -1099,8 +1159,8 @@ class cusButton{
       canvas.image(this.imgs[0], x, y);
       canvas.text(this.text, x + w/2, y + h/2 + 8);
     }else{
-      canvas.image(this.imgs[1], x + 2, y + 2);
-      canvas.text(this.text, x + w/2 + 2, y + h/2 + 10);
+      canvas.image(this.imgs[1], x, y + 2);
+      canvas.text(this.text, x + w/2, y + h/2 + 10);
     }
     canvas.pop();
   }
@@ -1169,10 +1229,10 @@ class dynamicObjManager{
             this.createScoreBall(frags[i].pos_x, frags[i].pos_y, frags[i].type);
             _spriteManager.score_board.frag_collected ++; // add thoughts collected to the score board
           }else{ // if collide with a torpedo, decrease the courage value
+            let targetValue = _spriteManager.courage_gauge.target_value[_spriteManager.topic_board.curTopic];
             _assets.get('explode').content.play(); // play the sound
             _beatManager.createBeat(frags[i].pos_x, frags[i].pos_y, '255,100,100', 40, 80);
-            _spriteManager.courage_gauge.target_value[_spriteManager.topic_board.curTopic] = 
-            max(_spriteManager.courage_gauge.target_value[_spriteManager.topic_board.curTopic] - 20, 0);
+            _spriteManager.courage_gauge.target_value[_spriteManager.topic_board.curTopic] = max(targetValue - 20, 0);
             _spriteManager.score_board.torpedo_bumped ++; // add torpedo bumped to the score board
           }
           frags.splice(i, 1);
@@ -1188,11 +1248,12 @@ class dynamicObjManager{
         if(scores[i].ifCollideObj(_spriteManager.courage_gauge)){
           let curTopic = _spriteManager.topic_board.curTopic;
           if(scores[i].type !== curTopic){ // if collide with a fragment of non-current topic, decrease the courage a little
-            _spriteManager.courage_gauge.target_value[curTopic] -= 2; // decrease courage value a little
+            _spriteManager.courage_gauge.target_value[curTopic] =
+            max(_spriteManager.courage_gauge.target_value[curTopic] - 2, 0); // decrease courage value a little
           }
           _assets.get('absorbed').content.play(); // play the sound
           _beatManager.createBeat(scores[i].pos_x, scores[i].pos_y, topic_colors[scores[i].type]);
-          // add courage value
+          // add value to corresponding color
           _spriteManager.courage_gauge.target_value[scores[i].type] =
           min(_spriteManager.courage_gauge.target_value[scores[i].type] + _fragScore, _stageManager.stages[_stageManager.curStage].max_courage);
           scores.splice(i, 1);

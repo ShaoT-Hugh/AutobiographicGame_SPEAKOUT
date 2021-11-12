@@ -6,7 +6,7 @@
     "barrage": [
         {
             "mode" : "random",
-            "tensity" : 10,
+            "tensity" : 12,
             "dir" : ["disc", 0, 180],
             "start" : 0,
             "end" : 119,
@@ -14,7 +14,7 @@
             "min_spd" : 0.3
         },{
             "mode" : "random",
-            "tensity" : 5,
+            "tensity" : 8,
             "dir" : ["cont", -15, 15, 165, 195],
             "start" : 45,
             "end" : 119,
