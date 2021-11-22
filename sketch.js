@@ -24,6 +24,11 @@ var _fragScore = 10; // score of each single fragment
 var _probOfTorpedo = 10; // generative probability of torpedo
 var _nonTopicFrag = 60; // generative probability of non-topic fragment
 
+var turorial_text = [
+  "Hi! Today I'm going to teach you how to speak in a discussion.",
+  "Here shows the topic people are talking."
+]
+
 var pixel_font; // font used in the interface
 var text_font; // font used in texts
 var fram_rate = 60;
@@ -319,6 +324,7 @@ class stageManager{
       this.isTalking = false;
       this.protagonistStartTalking = false;
       this.protagonistTalking = false;
+      _playSpace.textFont(pixel_font);
       _spriteManager.reset(); // reset all the sprites
       _dynamicObjManager.clearFragment(); // clear all the dynamic objects in the canvas
       _spriteManager.courage_gauge.clear(); // clear the courage gauge
@@ -765,6 +771,8 @@ class spriteManager{
 
     this.score_board = new scoreboard( // the score board turns up when the game ends
       width/2, -100, width/2, height/2, _assets.get('score_board').content, _assets.get('button_small').content);
+
+    this.floating_texts = []; // floating texts
   }
   // reset all the sprites
   reset(){
@@ -781,6 +789,17 @@ class spriteManager{
     this.topic_board.render();
     this.play_countdown.render();
     this.courage_gauge.render();
+    // render all the floating texts
+    if(this.floating_texts.length > 0){
+      for(let i in this.floating_texts){
+        if(this.floating_texts[i].render(_playSpace)) this.floating_texts.splice(i, 1);
+      }
+    }
+  }
+
+  // create a new floating text
+  createFloatingText(x, y, txt){
+    this.floating_texts.push(new floatingText(x, y, txt));
   }
 }
 // sprites refer to all the individual changable elements on the screen
@@ -1013,7 +1032,7 @@ class scoreboard extends sprite{
     if(x !== this.targt_x || y !== this.targt_y) this.move();
     else this.isReady = true;
 
-    // render the image of the score board
+    // render the image of the score board (position mode: CORNER)
     canvas.imageMode(CORNER);
     canvas.image(this.imgs, 0, 0);
 
@@ -1039,13 +1058,13 @@ class scoreboard extends sprite{
     }
 
     canvas.textSize(16);
-    // render scoring item
+    // render scoring item (position mode: LEFT)
     canvas.fill(0);
     canvas.textAlign(LEFT);
     canvas.text(
       "Thoughts Collected :\nTorpedo Bumped :\nSpeak Out Time:",
     canvas.width/2 - (this.width/2 - 18), canvas.height/2 - 20);
-    // render grades
+    // render grades  (position mode: RIGHT)
     canvas.fill(255);
     canvas.textAlign(RIGHT);
     canvas.text(
@@ -1059,6 +1078,23 @@ class scoreboard extends sprite{
       
     imageMode(CENTER);
     image(_scoreBoardSpace, x, y);
+  }
+}
+
+// tutorial appears before the first attempt
+class tutorial extends sprite{
+  constructor(x, y, tx, ty, imgs, buttonImg){
+    super(x, y, tx, ty, imgs);
+
+    // tutorial images(imgs[0]: the board)
+    // tutorial texts
+    this.texts = turorial_text;
+    // create the continue button
+  }
+
+  render(canvas){
+    canvas.posh();
+    canvas.pop();
   }
 }
 
@@ -1094,12 +1130,36 @@ class character extends sprite{
   }
 }
 
+// floating text
+class floatingText extends sprite{
+  constructor(x, y, txt, size = 16, color = 255){
+    super(x, y, x, y - 20);
+    this.txt = txt;
+    this.size = 24; // size of the text
+    this.color = color; // color of the text
+  }
+
+  render(canvas = window){
+    let x = this.pos_x, y = this.pos_y, tx = this.targt_x, ty = this.targt_y;
+    this.move();
+    let apl = map(abs(ty - y), 0, 20, 0, 255);
+
+    canvas.push();
+    canvas.fill(this.color, apl);
+    canvas.textSize(this.size);
+    canvas.textAlign(CENTER);
+    canvas.text(this.txt, x, y);
+    canvas.pop();
+    return x === tx && y === ty;
+  }
+}
+
 // customized button
-class cusButton{
+class cusButton{ // (x position, y position, width, height, event listener, button image, text, text color, text size)
   constructor(x, y, width, height, func, imgs = [], text = '', text_col = 255, text_size = 20, offsetX = 0, offsetY = 0){
     this.pos_x = x;
     this.pos_y = y;
-    this.offset_x = offsetX;
+    this.offset_x = offsetX; // offset used to output the absolute coordination of the button
     this.offset_y = offsetY;
     this.width = width;
     this.height = height;
@@ -1252,7 +1312,8 @@ class dynamicObjManager{
           if(scores[i].type !== curTopic){ // if collide with a fragment of non-current topic, decrease the courage a little
             _spriteManager.courage_gauge.target_value[curTopic] =
             max(_spriteManager.courage_gauge.target_value[curTopic] - 2, 0); // decrease courage value a little
-          }
+            _spriteManager.createFloatingText(scores[i].pos_x, scores[i].pos_y, "-" + 2); // create a drop floating text
+          }else _spriteManager.createFloatingText(scores[i].pos_x, scores[i].pos_y, "+" + _fragScore); // create a score floating text
           _assets.get('absorbed').content.play(); // play the sound
           _beatManager.createBeat(scores[i].pos_x, scores[i].pos_y, topic_colors[scores[i].type]);
           // add value to corresponding color
