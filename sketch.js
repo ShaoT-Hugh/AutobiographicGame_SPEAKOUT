@@ -5,6 +5,7 @@ var _spriteManager;
 var _sceneSpace; // canvas
 var _playSpace; // canvas
 var _scoreBoardSpace; // canvas
+var _tutorialBoardSpace; // canvas
 var _dynamicObjManager;
 var _protagonist;
 var _beatManager;
@@ -24,12 +25,28 @@ var _fragScore = 10; // score of each single fragment
 var _probOfTorpedo = 10; // generative probability of torpedo
 var _nonTopicFrag = 60; // generative probability of non-topic fragment
 
-var turorial_text = [
-  "Hi! Today I'm going to teach you how to speak in a discussion.",
-  "Here shows the topic people are talking."
+var tutorial_text = [
+  `1) You are going to participate in a group discussion.`,
+  `2) Unfortunately, you're not talkative. So you will
+  have to prepare yourself before you're going to talk.`,
+  `3) Catch the ideas in your mind, accumalate them and 
+  speak out, which is what you're going to do.`,
+  `4) The red heart represents your mind. Use W, A, S, D 
+  to control it to collect fragments of thoughts.`,
+  `5) The groove at the bottom is your courage power. 
+  If the power is full, you will be able to speak out.`,
+  `6) The color of the bubble represents the current 
+  topic people are talking on.`,
+  `7) The colorful balls represent the fragments of 
+  thoughts in your mind.`,
+  `8) In order to fill up the courage, you will need to 
+  collect the fragments in the same color as the topic.`,
+  `9) Dodge from the distractions as they will decrease 
+  your courage power.`
 ]
 
 var pixel_font; // font used in the interface
+var digit_font; // font used in the tutorial
 var text_font; // font used in texts
 var fram_rate = 60;
 var global_timer = 0;
@@ -83,6 +100,17 @@ function setup(){
   // load all the remaining assets
 
   // load graphic files
+  // load tutorial images
+  _assets.set('tutorial_01', new asset('static_image', 'assets/graphics/tutorial_1.png'));
+  _assets.set('tutorial_02', new asset('static_image', 'assets/graphics/tutorial_2.png'));
+  _assets.set('tutorial_03', new asset('static_image', 'assets/graphics/tutorial_3.png'));
+  _assets.set('tutorial_04', new asset('static_image', 'assets/graphics/tutorial_4.png'));
+  _assets.set('tutorial_05', new asset('static_image', 'assets/graphics/tutorial_5.png'));
+  _assets.set('tutorial_06', new asset('static_image', 'assets/graphics/tutorial_6.png'));
+  _assets.set('tutorial_07', new asset('static_image', 'assets/graphics/tutorial_7.png'));
+  _assets.set('tutorial_08', new asset('static_image', 'assets/graphics/tutorial_8.png'));
+  _assets.set('tutorial_09', new asset('static_image', 'assets/graphics/tutorial_9.png'));
+
   // load UI elements
   _assets.set('board_A', new asset('static_image', 'assets/graphics/board_A.png'));
   _assets.set('board_B', new asset('static_image', 'assets/graphics/board_B.png'));
@@ -100,6 +128,7 @@ function setup(){
   _assets.set('courage', new asset('static_image', 'assets/graphics/courage.png'));
   _assets.set('courage_full', new asset('static_image', 'assets/graphics/courage_full.png'));
 
+  _assets.set('tutorial_board', new asset('static_image', 'assets/graphics/tutorial_board.png'));
   _assets.set('score_board', new asset('static_image', 'assets/graphics/score_board.png'));
   _assets.set('button_small', new asset('dynamic_image', 'assets/graphics/button_small_', 2, '.png'));
 
@@ -148,6 +177,7 @@ function setup(){
   
   // load the font
   pixel_font = loadFont('assets/Minecraft.ttf');
+  digit_font = loadFont('assets/pixelmix.ttf');
   text_font = pixel_font;
   textFont(pixel_font);
 
@@ -192,6 +222,12 @@ function setup(){
   // Initialize the score board area
   _scoreBoardSpace = createGraphics(_spriteManager.score_board.width, _spriteManager.score_board.height);
   _scoreBoardSpace.noStroke();
+
+  // Initialize the tutorial space area
+  _tutorialBoardSpace = createGraphics(_spriteManager.tutorial_board.width, _spriteManager.tutorial_board.height);
+  _tutorialBoardSpace.noStroke();
+  _tutorialBoardSpace.textFont(digit_font);
+  _tutorialBoardSpace.textLeading(16);
 
   // Initialize the dynamic_obj_manager
   _dynamicObjManager = dynamicObjManager.get();
@@ -278,6 +314,7 @@ class stageManager{
     this.curStage = 0; // current stage number
     this.nextStage = 0; // next stage number
     this.statusNum = 0;
+    this.tutorialOn = true; // if the tutorial is on
     this.stages = []; // all the stages
     this.gameData = {}; // current stage data
     this.playTime = round_time; // total play time in this round
@@ -305,6 +342,12 @@ class stageManager{
 
     // reset the stage
     this.resetStage(num);
+
+    // if the tutorial is on, play the tutorial first(status is stopped temporarily)
+    if(this.tutorialOn && num !== 0){
+      _spriteManager.tutorial_board.pageTurn(true);
+      this.statusNum --;
+    }
 
     textAlign(CENTER); // centralize texts
     this.fadeAlp = 1; // reset the fade alpha
@@ -377,7 +420,7 @@ class stageManager{
       }, random(1500, 3000));
     }
   }
-  // make evertone shut up
+  // make everyone shut up
   stopTalk(){
     clearTimeout(this.talkingTimer);
     this.stages[this.curStage].characters[this.whoIsTalking].isTalking = false;
@@ -487,6 +530,14 @@ class stageManager{
     // check if render the menu
     if(this.curStage !== 0){
       switch(this.statusNum){
+        case -1: // *status -1 -> 0: tutorial
+          push();
+          fill(0);
+          rect(0, 0, width, height);
+          pop();
+          _spriteManager.tutorial_board.render();
+          if(_spriteManager.tutorial_board.isOver) this.statusNum ++;
+          break;
         case 0: // status 0 -> 1: scene fade in
           if(this.fadeAlp <= 0){
             this.statusNum++;
@@ -577,8 +628,10 @@ class stageManager{
   }
   // *render the current stage
   render(){
+    let status = this.statusNum;
+
     // check if render the menu
-    if(this.curStage !== 0){
+    if(this.curStage !== 0 && status >= 0){
     /* stage render order:
       scene & dynamic objects
       sprites
@@ -596,7 +649,6 @@ class stageManager{
       _playSpace.background(0); // refresh the play space background
   
       // check which elements need to render
-      let status = this.statusNum;
       // status 2 -> 3: protagonist appear
       if(status >= 2){
         _protagonist.render();
@@ -628,10 +680,10 @@ class stageManager{
         _spriteManager.score_board.render();
       }
       // status 0 -> 1: black mask fade in
-      if(status < 1){
+      if(status === 0){
         this.fadeIn();
       }
-    }else{
+    }else{ // if the current stage is menu, just render the menu
       this.stages[this.curStage].render();
     }
   }
@@ -753,6 +805,15 @@ class spriteManager{
   }
   constructor(){
     // Initialize all the sprites
+
+    this.tutorial_board = new tutorial( // the tutorial board
+      width/2, 0 - height/2, width/2, height/2,
+      [_assets.get('tutorial_board').content, _assets.get('tutorial_01').content, _assets.get('tutorial_02').content,
+      _assets.get('tutorial_03').content, _assets.get('tutorial_04').content, _assets.get('tutorial_05').content, 
+      _assets.get('tutorial_06').content, _assets.get('tutorial_07').content, _assets.get('tutorial_08').content,
+      _assets.get('tutorial_09').content], _assets.get('button_small').content
+    );
+
     this.topic_board = new topicBoard( // the topic board
       width/2, -20, width/2, 17,
       [_assets.get('board_A').content, _assets.get('board_B').content, _assets.get('board_X').content, _assets.get('board_Y').content,
@@ -980,12 +1041,15 @@ class courageGauge extends sprite{
     canvas.tint(255, 255 * main_value / max_courage);
     canvas.image(this.imgs[3], x, y - 12);
 
-    // numbers showing the current courage value
     canvas.textFont(pixel_font);
     canvas.textSize(18);
-    canvas.textAlign(RIGHT);
     canvas.fill(255);
+    // numbers showing the current courage value
+    canvas.textAlign(RIGHT);
     canvas.text(round(main_value) + "/" + max_courage, x - 220, y - 24);
+    // show the speak out time
+    canvas.textAlign(LEFT);
+    canvas.text("Speak Out Time : " + _spriteManager.score_board.success_speak, x + 100, y - 24);
     canvas.pop();
   }
 }
@@ -1062,7 +1126,7 @@ class scoreboard extends sprite{
     canvas.fill(0);
     canvas.textAlign(LEFT);
     canvas.text(
-      "Thoughts Collected :\nTorpedo Bumped :\nSpeak Out Time:",
+      "Thoughts Collected :\nDistraction Bumped :\nSpeak Out Time:",
     canvas.width/2 - (this.width/2 - 18), canvas.height/2 - 20);
     // render grades  (position mode: RIGHT)
     canvas.fill(255);
@@ -1085,16 +1149,100 @@ class scoreboard extends sprite{
 class tutorial extends sprite{
   constructor(x, y, tx, ty, imgs, buttonImg){
     super(x, y, tx, ty, imgs);
+    this.width = 484;
+    this.height = 364;
 
+    let w = this.width, h = this.height;
     // tutorial images(imgs[0]: the board)
-    // tutorial texts
-    this.texts = turorial_text;
-    // create the continue button
+    // array of tutorial texts
+    this.texts = tutorial_text;
+    // create the next & back button
+    this.nextBtn = new cusButton(w/2 + 65, 310, 102, 40, function(){_spriteManager.tutorial_board.pageTurn(true);}, buttonImg, 
+      "Next", 255, 18, tx - w/2, ty - h/2);
+    this.backBtn = new cusButton(w/2 - 155, 310, 102, 40, function(){_spriteManager.tutorial_board.pageTurn(false);}, buttonImg, 
+      "Back", 255, 18, tx - w/2, ty - h/2);
+    // create the start button
+    this.startBtn = new cusButton(w/2 - 50, 310, 102, 40, function(){_spriteManager.tutorial_board.tutorialOver();}, buttonImg, 
+      "START", 0, 18, tx - w/2, ty - h/2);
+
+    // current page of the tutorial
+    this.page = -1;
+    // inform if the tutorial is over
+    this.isOver = false;
   }
 
-  render(canvas){
-    canvas.posh();
+  // enable/disable the buttons
+  enableButton(isEnabled){
+    this.nextBtn.enabled = isEnabled;
+    this.backBtn.enabled = isEnabled;
+    this.startBtn.enabled = isEnabled;
+  }
+
+  pageTurn(updown){
+    // enable/disable the right buttons
+    let p = this.page;
+    if(updown) p ++;
+    else p --;
+
+    if(p === 0){
+      this.nextBtn.enabled = true;
+      this.backBtn.enabled = false;
+    }else if(p === this.texts.length - 1){
+      this.nextBtn.enabled = false;
+      this.startBtn.enabled = true;
+    }else{
+      this.nextBtn.enabled = true;
+      this.backBtn.enabled = true;
+    }
+    this.page = p;
+  }
+
+  tutorialOver(){
+    this.enableButton(false); // disable all the buttons
+    this.targt_y = this.opos_y;
+  }
+
+  render(canvas = _tutorialBoardSpace){
+    this.move();
+
+    canvas.push();
+    // render the image of the score board (position mode: CORNER)
+    canvas.imageMode(CORNER);
+    canvas.image(this.imgs[0], 0, 0);
+
+    let p = this.page;
+    // render the tutorial image
+    canvas.imageMode(CENTER);
+    canvas.image(this.imgs[p + 1], this.width/2, this.height/2 - 46);
+
+    // render the tutorial texts
+    canvas.fill(255);
+    canvas.textAlign(CENTER);
+    canvas.textSize(12);
+    canvas.text(this.texts[p], this.width/2, this.height/2 + 95);
+    // render the right buttons
+    switch(p){
+      case 0:
+        this.nextBtn.render(canvas);
+        break;
+      case this.texts.length - 1:
+        this.backBtn.render(canvas);
+        this.startBtn.render(canvas);
+        break;
+      default:
+        this.backBtn.render(canvas);
+        this.nextBtn.render(canvas);
+    }
     canvas.pop();
+
+    imageMode(CENTER);
+    image(_tutorialBoardSpace, this.pos_x, this.pos_y);
+
+    // check if the tutorial is over
+    if(p === this.texts.length - 1 && this.pos_y === this.opos_y){
+      _stageManager.tutorialOn = false;
+      this.isOver = true;
+    }
   }
 }
 
@@ -1132,10 +1280,10 @@ class character extends sprite{
 
 // floating text
 class floatingText extends sprite{
-  constructor(x, y, txt, size = 16, color = 255){
+  constructor(x, y, txt, size = 26, color = 255){
     super(x, y, x, y - 20);
     this.txt = txt;
-    this.size = 24; // size of the text
+    this.size = size ; // size of the text
     this.color = color; // color of the text
   }
 
@@ -1228,6 +1376,7 @@ class cusButton{ // (x position, y position, width, height, event listener, butt
   }
 }
 
+// scroll text
 // <---------- Animated Objects ---------->
 // <---------- Dynamic Objects ---------->
 class dynamicObjManager{
@@ -1295,6 +1444,7 @@ class dynamicObjManager{
             _assets.get('explode').content.play(); // play the sound
             _beatManager.createBeat(frags[i].pos_x, frags[i].pos_y, '255,100,100', 40, 80);
             _spriteManager.courage_gauge.target_value[_spriteManager.topic_board.curTopic] = max(targetValue - 20, 0);
+            _spriteManager.createFloatingText(frags[i].pos_x, frags[i].pos_y, "-" + 20); // create a drop floating text
             _spriteManager.score_board.torpedo_bumped ++; // add torpedo bumped to the score board
           }
           frags.splice(i, 1);
@@ -1312,8 +1462,8 @@ class dynamicObjManager{
           if(scores[i].type !== curTopic){ // if collide with a fragment of non-current topic, decrease the courage a little
             _spriteManager.courage_gauge.target_value[curTopic] =
             max(_spriteManager.courage_gauge.target_value[curTopic] - 2, 0); // decrease courage value a little
-            _spriteManager.createFloatingText(scores[i].pos_x, scores[i].pos_y, "-" + 2); // create a drop floating text
-          }else _spriteManager.createFloatingText(scores[i].pos_x, scores[i].pos_y, "+" + _fragScore); // create a score floating text
+            _spriteManager.createFloatingText(scores[i].pos_x, scores[i].pos_y + 10, "-" + 2); // create a drop floating text
+          }else _spriteManager.createFloatingText(scores[i].pos_x, scores[i].pos_y + 10, "+" + _fragScore); // create a score floating text
           _assets.get('absorbed').content.play(); // play the sound
           _beatManager.createBeat(scores[i].pos_x, scores[i].pos_y, topic_colors[scores[i].type]);
           // add value to corresponding color
