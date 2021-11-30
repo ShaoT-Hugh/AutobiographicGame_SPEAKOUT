@@ -131,6 +131,8 @@ function setup(){
   _assets.set('tutorial_board', new asset('static_image', 'assets/graphics/tutorial_board.png'));
   _assets.set('score_board', new asset('static_image', 'assets/graphics/score_board.png'));
   _assets.set('button_small', new asset('dynamic_image', 'assets/graphics/button_small_', 2, '.png'));
+  _assets.set('star_light', new asset('static_image', 'assets/graphics/star_light.png'));
+  _assets.set('star_dark', new asset('static_image', 'assets/graphics/star_dark.png'));
 
   // load dialogue bubbles
   _assets.set('d_01', new asset('static_image', 'assets/graphics/Dialogue_A1.png'));
@@ -150,7 +152,7 @@ function setup(){
   _assets.get('d_22').content, _assets.get('d_32').content, _assets.get('d_42').content,]);
 
   // load dynamic objects
-  _assets.set('protagonist', new asset('static_image', 'assets/graphics/protagonist.png'));
+  _assets.set('protagonist', new asset('static_image', 'assets/graphics/Protagonist(Revised).png'));
   _assets.set('torpedo', new asset('static_image', 'assets/graphics/torpedo.png'));
   _assets.set('frag_A', new asset('static_image', 'assets/graphics/fragA.png'));
   _assets.set('frag_B', new asset('static_image', 'assets/graphics/fragB.png'));
@@ -166,7 +168,9 @@ function setup(){
   _assets.set('collide', new asset('sound', 'assets/soundeffects/sfx_exp_shortest_hard7.wav'));
   _assets.set('absorbed', new asset('sound', 'assets/soundeffects/sfx_lowhealth_alarmloop6.wav'));
   _assets.set('explode', new asset('sound', 'assets/soundeffects/sfx_exp_short_hard2.wav'));
+  _assets.set('shuttle', new asset('sound', 'assets/soundeffects/sfx_exp_short_hard14.wav'));
   _assets.set('success', new asset('sound', 'assets/soundeffects/sfx_exp_odd5.wav'));
+  _assets.set('cheer', new asset('sound', 'assets/soundeffects/ES_Pyro Explosion.mp3'))
   _assets.set('checkout', new asset('sound', 'assets/soundeffects/bell_03.ogg'));
 
   // load background music
@@ -232,7 +236,7 @@ function setup(){
   // Initialize the dynamic_obj_manager
   _dynamicObjManager = dynamicObjManager.get();
   // Initialize the protagonist(postion X, position Y, moving speed, size)
-  _protagonist = protagonist.get(width/2, _playSpace.height/2, 4, 20);
+  _protagonist = protagonist.get(width/2, _playSpace.height/2, 4, 23);
   // Initialize the beat_manager(diameter of beats, duration of the beat)
   _beatManager = beatManager.get(50, 30);
 
@@ -314,13 +318,14 @@ class stageManager{
     this.curStage = 0; // current stage number
     this.nextStage = 0; // next stage number
     this.statusNum = 0;
-    this.tutorialOn = true; // if the tutorial is on
+    this.tutorialOn = false; // if the tutorial is on
     this.stages = []; // all the stages
     this.gameData = {}; // current stage data
     this.playTime = round_time; // total play time in this round
     this.topicTimer = -1; // current topic timer
     this.barrageTimers = []; // barrage timers in current stage
 
+    // scene monitors
     this.talkingTimer = -1;
     this.isTalking = false; // if someone is talking
     this.whoIsTalking = -1; // who is talking
@@ -489,7 +494,7 @@ class stageManager{
     }
   }
 
-  // update current stage
+  // update topics
   updateStage(){
     let game_data = this.gameData;
     let t = round_time - this.playTime;
@@ -497,6 +502,11 @@ class stageManager{
     // check if the topic needs to change
     for(let i in game_data.topic_timing){
       if(t === game_data.topic_timing[i] && _spriteManager.topic_board.curTopic !== game_data.topic_order[i]){
+        // play the switching sound & flashing text
+        let topic_color = topic_colors[game_data.topic_order[i]];
+        _spriteManager.createFloatingText(-100, 70, "TOPIC CHANGE ", "horizontal_flash", 33, topic_color); // create floating text
+        _assets.get("shuttle").content.play(); // play the sound
+        _beatManager.createBeat(width/2, _sceneheight + 7, topic_color, 120, 400);
         // change to a new topic
         _spriteManager.topic_board.change(game_data.topic_order[i], game_data.topic_duration[i]);
         // reset talking status, anyone talking currently is to be shut up
@@ -586,6 +596,17 @@ class stageManager{
             _spriteManager.score_board.enableButton(true); // enable the buttons on score board
             this.stages[this.curStage].music.stop(); // stop playing the background music
             _assets.get('checkout').content.play(); // play the checkout sound
+            // record the current score of the stage
+            let score = _spriteManager.score_board.evaluate();
+            this.stages[this.curStage].scores.push(score);
+            this.stages[this.curStage].bestScore = maxInArray(this.stages[this.curStage].scores);
+            // change the button texts on the menu
+            if(this.stages[this.curStage].bestScore > score){
+              let stars = '', best_score = this.stages[this.curStage].bestScore;
+              for(let i = 0; i < best_score; i ++) stars += '⭐';
+              this.stages[0].buttons[this.curStage - 1].text += ' ' + stars;
+            }
+
             this.statusNum++;
           }
           break;
@@ -726,6 +747,10 @@ class stage{
 
     // max courage required to speak out
     this.max_courage = this.data.max_courage || 100;
+
+    // history score of the stage
+    this.scores = [];
+    this.bestScore = 0;
   }
 
   // render the stage
@@ -859,8 +884,8 @@ class spriteManager{
   }
 
   // create a new floating text
-  createFloatingText(x, y, txt){
-    this.floating_texts.push(new floatingText(x, y, txt));
+  createFloatingText(x, y, txt, mode = "vertical_float", size = 26, color = '255, 255, 255'){
+    this.floating_texts.push(new floatingText(x, y, txt, mode, size, color ));
   }
 }
 // sprites refer to all the individual changable elements on the screen
@@ -984,9 +1009,11 @@ class courageGauge extends sprite{
     let max_courage = _stageManager.stages[_stageManager.curStage].max_courage;
 
     // check if the courage gauge is full
-    if(value[topic_num] >= max_courage){
+    if(value[topic_num] >= max_courage){ // if the courage power is full, speak successfully
       this.target_value[topic_num] = 0; // clear the courage gauge
-      _assets.get('success').content.play(); // play the sound
+      _assets.get('success').content.play(); // play the success sound
+      _assets.get('cheer').content.play(); // play the cheer sound
+      _spriteManager.createFloatingText(-100, 70, "SUCCESS", "horizontal_flash", 33, "255, 255, 255"); // create floating text
       _beatManager.createBeat(this.pos_x, this.pos_y, topic_colors[topic_num], 80, 200);
       _stageManager.protagonistStartTalking = true; // protagonist start talking
       _spriteManager.score_board.success_speak ++; // success speak +1
@@ -1085,10 +1112,19 @@ class scoreboard extends sprite{
     this.success_speak = 0;
   }
   // result grade
-  comment(score){
-    if(score <= 6) return 1;
-    else if(score >= 12) return 3;
+  evaluate(){
+    let score = this.success_speak;
+    if(score <= 0) return 0;
+    if(score <= 5) return 1;
+    else if(score >= 11) return 3;
     else return 2;
+  }
+  // render the evaluation stars
+  renderStars(evl, canvas){
+    for(let i = 0; i < 3; i++){
+      if(i <= evl - 1) canvas.image(_assets.get('star_light').content, canvas.width/2 - 54 + i * 54, 34);
+      else canvas.image(_assets.get('star_dark').content, canvas.width/2 - 54 + i * 54, 34);
+    }
   }
   // render the score board
   render(canvas = _scoreBoardSpace){
@@ -1104,9 +1140,10 @@ class scoreboard extends sprite{
     canvas.push();
     canvas.textFont(text_font);
     // render rate comment
+    /*
     canvas.textAlign(CENTER);
     canvas.textSize(19);
-    switch(this.comment(this.success_speak)){
+    switch(this.evaluate(this.success_speak)){
       case 1:
         canvas.fill(102, 255, 255);
         canvas.text("STILL NEED IMPROVE", canvas.width/2, 42);
@@ -1119,7 +1156,7 @@ class scoreboard extends sprite{
         canvas.fill(255, 51, 0);
         canvas.text("YOU'RE SO AMAZING!", canvas.width/2, 42);
         break;
-    }
+    }*/
 
     canvas.textSize(16);
     // render scoring item (position mode: LEFT)
@@ -1139,7 +1176,11 @@ class scoreboard extends sprite{
     // render buttons
     this.buttons[0].render(canvas);
     this.buttons[1].render(canvas);
-      
+    
+    // render the stars
+    canvas.imageMode(CENTER);
+    this.renderStars(this.evaluate(), canvas);
+
     imageMode(CENTER);
     image(_scoreBoardSpace, x, y);
   }
@@ -1159,7 +1200,7 @@ class tutorial extends sprite{
     // create the next & back button
     this.nextBtn = new cusButton(w/2 + 65, 310, 102, 40, function(){_spriteManager.tutorial_board.pageTurn(true);}, buttonImg, 
       "Next", 255, 18, tx - w/2, ty - h/2);
-    this.backBtn = new cusButton(w/2 - 155, 310, 102, 40, function(){_spriteManager.tutorial_board.pageTurn(false);}, buttonImg, 
+    this.backBtn = new cusButton(w/2 - 165, 310, 102, 40, function(){_spriteManager.tutorial_board.pageTurn(false);}, buttonImg, 
       "Back", 255, 18, tx - w/2, ty - h/2);
     // create the start button
     this.startBtn = new cusButton(w/2 - 50, 310, 102, 40, function(){_spriteManager.tutorial_board.tutorialOver();}, buttonImg, 
@@ -1246,6 +1287,15 @@ class tutorial extends sprite{
   }
 }
 
+// setting page
+class setting extends sprite{
+  constructor(){
+    super(x, y, tx, ty, imgs);
+    this.width = 484;
+    this.height = 364;
+  }
+}
+
 // characters
 class character extends sprite{
   constructor(x, imgs, bubble_pos, isSlient = false, y = _sceneheight - 84){
@@ -1280,25 +1330,44 @@ class character extends sprite{
 
 // floating text
 class floatingText extends sprite{
-  constructor(x, y, txt, size = 26, color = 255){
-    super(x, y, x, y - 20);
+  constructor(x, y, txt, mode, size = 26, color = '255, 255, 255'){
+    switch(mode){
+      case "vertical_float":
+        super(x, y, x, y - 20);
+        break;
+      case "horizontal_flash":
+        super(x, y, width/2, y);
+        this.rate = 15; // accelerate
+        break;
+    }
     this.txt = txt;
+    this.mode = mode;
     this.size = size ; // size of the text
-    this.color = color; // color of the text
+    this.color = color; // color of the text(string)
   }
 
   render(canvas = window){
-    let x = this.pos_x, y = this.pos_y, tx = this.targt_x, ty = this.targt_y;
+    let x = this.pos_x, y = this.pos_y, tx = this.targt_x, ty = this.targt_y, ox = this.opos_x;
     this.move();
-    let apl = map(abs(ty - y), 0, 20, 0, 255);
+    let apl = 0;
+    switch(this.mode){
+      case "vertical_float":
+        apl = map(abs(ty - y), 0, 20, 0, 1);
+        break;
+      case "horizontal_flash":
+        let dis = abs(_Width/2 - ox);
+        apl = map(abs(_Width/2 - x), 0, dis, 1, 0);
+        if(x === tx && x === _Width/2) this.changeTarget(_Width - ox, y);
+        break;
+    }
 
     canvas.push();
-    canvas.fill(this.color, apl);
+    canvas.fill('rgba(' + this.color + ',' + apl + ')');
     canvas.textSize(this.size);
     canvas.textAlign(CENTER);
     canvas.text(this.txt, x, y);
     canvas.pop();
-    return x === tx && y === ty;
+    return x === tx && y === ty && apl <= 0;
   }
 }
 
@@ -1715,4 +1784,14 @@ function shiftArr(arr, minNum, maxNum){
     newArr.push(arr[i] - 1 < minNum ? maxNum : arr[i] - 1);
   }
   return newArr;
+}
+
+// find the maxium number in an array
+function maxInArray(arr){
+  arr.sort(function (m, n) {
+    if (m > n) return -1;
+    else if (m < n) return 1;
+    else return 0;
+  });
+  return arr[0];
 }
