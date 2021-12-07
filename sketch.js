@@ -10,12 +10,17 @@ var _dynamicObjManager;
 var _protagonist;
 var _beatManager;
 
+var stage_name = ['menu', 'School', 'Party', 'Workspace']; // stage names
 // representative colors of the topics
 // 0-4: magenta(#ff00aa), blue(#00aaf0), purple(#aa00ff), orange(#ffaa00), green(#c9e3ac)
 var topic_colors = ['255,0,170', '0,170,240', '170,0,255', '255,170,0', '201,227,172'];
 
-// in-game parameters
+// mouse buffer used to avoid repeat mouse click
 var _isMousePressed = false; // if the mouse if pressed
+var _mouseBuffer = false;
+var _mouseBufferTimer = 0;
+
+// in-game parameters
 var _Width = 600; // width of the canvas
 var _Height = 400; // height of the canvas
 var _sceneheight = 130; // height of the top scene graphic
@@ -84,7 +89,9 @@ function preload(){
   _assets.set('p3d', new asset('dynamic_image', 'assets/graphics/p3d', 4, '.png'));
   
   // load menu UIs
+  _assets.set('button_huge', new asset('dynamic_image', 'assets/graphics/button_huge_', 2, '.png'))
   _assets.set('button_big', new asset('dynamic_image', 'assets/graphics/button_big_', 2, '.png'));
+  _assets.set('button_back', new asset('dynamic_image', 'assets/graphics/button_back_', 2, '.png'));
 
   // load stage data
   _assets.set('data_1', loadJSON('assets/stage_parameter_1.json'));
@@ -100,6 +107,11 @@ function setup(){
   // load all the remaining assets
 
   // load graphic files
+  // load thumbnails
+  _assets.set('thumbnail_Stage1', new asset('static_image', 'assets/graphics/thumbnail_Stage1.png'));
+  _assets.set('thumbnail_Stage2', new asset('static_image', 'assets/graphics/thumbnail_Stage2.png'));
+  _assets.set('thumbnail_Stage3', new asset('static_image', 'assets/graphics/thumbnail_Stage3.png'));
+
   // load tutorial images
   _assets.set('tutorial_01', new asset('static_image', 'assets/graphics/tutorial_1.png'));
   _assets.set('tutorial_02', new asset('static_image', 'assets/graphics/tutorial_2.png'));
@@ -133,6 +145,8 @@ function setup(){
   _assets.set('button_small', new asset('dynamic_image', 'assets/graphics/button_small_', 2, '.png'));
   _assets.set('star_light', new asset('static_image', 'assets/graphics/star_light.png'));
   _assets.set('star_dark', new asset('static_image', 'assets/graphics/star_dark.png'));
+  _assets.set('smallstar_light', new asset('static_image', 'assets/graphics/star_light(small).png'));
+  _assets.set('smallstar_dark', new asset('static_image', 'assets/graphics/star_dark(small).png'));
 
   // load dialogue bubbles
   _assets.set('d_01', new asset('static_image', 'assets/graphics/Dialogue_A1.png'));
@@ -145,11 +159,14 @@ function setup(){
   _assets.set('d_32', new asset('static_image', 'assets/graphics/Dialogue_Y2.png'));
   _assets.set('d_41', new asset('static_image', 'assets/graphics/Dialogue_O1.png'));
   _assets.set('d_42', new asset('static_image', 'assets/graphics/Dialogue_O2.png'));
+  _assets.set('d_51', new asset('static_image', 'assets/graphics/Dialogue_thumbup1.png'));
+  _assets.set('d_52', new asset('static_image', 'assets/graphics/Dialogue_thumbup2.png'));
+
   // bubbles array
   _assets.set('bubbles_right', [_assets.get('d_01').content, _assets.get('d_11').content,
-  _assets.get('d_21').content, _assets.get('d_31').content, _assets.get('d_41').content,]);
+  _assets.get('d_21').content, _assets.get('d_31').content, _assets.get('d_41').content, _assets.get('d_51').content]);
   _assets.set('bubbles_left', [_assets.get('d_02').content, _assets.get('d_12').content,
-  _assets.get('d_22').content, _assets.get('d_32').content, _assets.get('d_42').content,]);
+  _assets.get('d_22').content, _assets.get('d_32').content, _assets.get('d_42').content, _assets.get('d_52').content]);
 
   // load dynamic objects
   _assets.set('protagonist', new asset('static_image', 'assets/graphics/Protagonist(Revised).png'));
@@ -159,8 +176,14 @@ function setup(){
   _assets.set('frag_X', new asset('static_image', 'assets/graphics/fragX.png'));
   _assets.set('frag_Y', new asset('static_image', 'assets/graphics/fragY.png'));
   _assets.set('frag_O', new asset('static_image', 'assets/graphics/fragO.png'));
+  _assets.set('shape_A', new asset('static_image', 'assets/graphics/shape_A.png'));
+  _assets.set('shape_B', new asset('static_image', 'assets/graphics/shape_B.png'));
+  _assets.set('shape_X', new asset('static_image', 'assets/graphics/shape_X.png'));
+  _assets.set('shape_Y', new asset('static_image', 'assets/graphics/shape_Y.png'));
+  _assets.set('shape_O', new asset('static_image', 'assets/graphics/shape_O.png'));
   // fragments array
   _assets.set('frags', [_assets.get('frag_A'), _assets.get('frag_B'), _assets.get('frag_X'), _assets.get('frag_Y'), _assets.get('frag_O'), ]);
+  _assets.set('frags_shape', [_assets.get('shape_A'), _assets.get('shape_B'), _assets.get('shape_X'), _assets.get('shape_Y'), _assets.get('shape_O')]);
 
   // load sound files
   _assets.set('clickbutton', new asset('sound', 'assets/soundeffects/sfx_sounds_button6.wav'));
@@ -187,7 +210,7 @@ function setup(){
 
   // Initialize the stage_manager
   _stageManager = stageManager.get();
-  _stageManager.stages.push(new menu('menu', 0, _assets.get('button_big').content));
+  _stageManager.stages.push(new menu('menu', 0, _assets.get('button_huge').content));
   // Intialize all the stages(stage name, stage number, back image, front image, stage data)
   _stageManager.stages.push(new stage('school', 1, _assets.get('stage1_back').content, _assets.get('stage1_front').content, _assets.get('data_1')));
   _stageManager.stages.push(new stage('party', 2, _assets.get('stage2_back').content, _assets.get('stage2_front').content, _assets.get('data_2')));
@@ -318,7 +341,7 @@ class stageManager{
     this.curStage = 0; // current stage number
     this.nextStage = 0; // next stage number
     this.statusNum = 0;
-    this.tutorialOn = false; // if the tutorial is on
+    this.tutorialOn = true; // if the tutorial is on
     this.stages = []; // all the stages
     this.gameData = {}; // current stage data
     this.playTime = round_time; // total play time in this round
@@ -408,8 +431,16 @@ class stageManager{
     if(this.protagonistStartTalking){
       this.protagonistStartTalking = false;
       this.protagonistTalking = true;
+      // // everybody thumbs up
+      // for(let i = 1; i < this.stages[this.curStage].characters.length; i++){
+      //   this.stages[this.curStage].characters[i].thumbup(true);
+      // }
       this.talkingTimer = setTimeout(function(){
         _stageManager.stages[_stageManager.curStage].characters[0].isTalking = false;
+        // // everybody thumbs down
+        // for(let i = 1; i < this.stages[this.curStage].characters.length; i++){
+        //   this.stages[this.curStage].characters[i].thumbup(false);
+        // }
         _stageManager.protagonistTalking = false;
         _stageManager.isTalking = false;
         _stageManager.whoIsTalking = -1;
@@ -600,12 +631,6 @@ class stageManager{
             let score = _spriteManager.score_board.evaluate();
             this.stages[this.curStage].scores.push(score);
             this.stages[this.curStage].bestScore = maxInArray(this.stages[this.curStage].scores);
-            // change the button texts on the menu
-            if(this.stages[this.curStage].bestScore > score){
-              let stars = '', best_score = this.stages[this.curStage].bestScore;
-              for(let i = 0; i < best_score; i ++) stars += '⭐';
-              this.stages[0].buttons[this.curStage - 1].text += ' ' + stars;
-            }
 
             this.statusNum++;
           }
@@ -628,19 +653,22 @@ class stageManager{
           this.fadeIn();
           if(this.fadeAlp <= 0){
             this.statusNum++;
-            _stageManager.stages[0].enableButton(true); // enable the buttons on menu
+            _stageManager.stages[0].play_button.enable(true); // enable the play button on the menu
             this.stages[0].music.loop(); // start to play the background music
           }
           break;
-        case 1: // status 1 -> 2: waiting to change stage
+        case 1: // status 1 -> 2: enter the stage selection page
+          break;
+        case 2: // status 2 -> 3: waiting to change stage
           if(this.curStage !== this.nextStage){
             this.statusNum++;
+            _stageManager.stages[0].back_button.enable(false); // disable the back button on the bottom
             _stageManager.stages[0].enableButton(false); // disable the buttons on menu
             this.stages[0].music.stop(); // stop playing the background music
             rectMode(CORNER);
           }
           break;
-        case 2: // status 2 -> : menu fade out
+        case 3: // status 3 -> : menu fade out
           this.fadeOut();
           if(this.fadeAlp >= 1) this.switchStage(this.nextStage);
           break;
@@ -704,8 +732,34 @@ class stageManager{
       if(status === 0){
         this.fadeIn();
       }
-    }else{ // if the current stage is menu, just render the menu
+    }else if(status >= 0){ // if the current stage is menu
       this.stages[this.curStage].render();
+
+      if(status > 1){
+        // render "SELECT STAGE" title
+        push();
+        textSize(40);
+        stroke(255);
+        strokeWeight(5);
+        fill(0);
+        text("SELECT A STAGE", _Width/2, 100);
+        pop();
+        // render the stage select buttons
+        this.stages[this.curStage].renderButton();
+        // render the back button
+        this.stages[this.curStage].back_button.render();
+      }else{
+        // render the game title
+        push();
+        textSize(52);
+        stroke(255);
+        strokeWeight(5);
+        fill(0);
+        text("SPEAK OUT", _Width/2, 100);
+        pop();
+        // render the play button
+        this.stages[this.curStage].play_button.render();
+      }
     }
   }
 
@@ -776,11 +830,32 @@ class menu{
     }
     this.pos_y = 0 - _sceneheight; // initial scroll y origin
 
-    this.buttons = [];
-    for(let i = 0; i < 3; i++){
-      this.buttons.push(new cusButton(_Width/2 - 121, 150 + i * 60, 242, 48,
-        function(){_stageManager.nextStage = i + 1;},
-        buttonImg, "STAGE_" + (i + 1), 0));
+    this.play_button = new cusButton(_Width/2 - 139, _Height/2, 278, 68, function(){
+      _stageManager.statusNum ++;
+      _stageManager.stages[0].enableButton(true); // enable the stage select buttons
+      _stageManager.stages[0].back_button.enable(true); // enable the back button
+      _stageManager.stages[0].play_button.enable(false); // disable the play button
+    }, buttonImg, "PLAY", 0, 26);
+
+    this.back_button = new cusButton(15, _Height - 61, 70, 48, function(){
+      _stageManager.statusNum --;
+      _stageManager.stages[0].enableButton(false); // disable the stage select buttons
+      _stageManager.stages[0].play_button.enable(true); // enable the play button
+      _stageManager.stages[0].back_button.enable(false); // disable the back button
+    }, _assets.get('button_back').content);
+
+    this.buttons = []; // stage select buttons
+    for(let i = 1; i <= 3; i++){
+      this.buttons.push(new cusButtonImg(_Width/2 - 262 + (i-1) * 184, 220, 164, 93,
+        function(){_stageManager.nextStage = i;},
+        function(canvas, x, y){
+          let evl = _stageManager.stages[i].bestScore;
+          for(let j = 0; j < 3; j++){
+            if(j <= evl - 1) canvas.image(_assets.get('smallstar_light').content, x + 25 + j * 43, y + 52);
+            else canvas.image(_assets.get('smallstar_dark').content, x + 25 + j * 43, y + 52);
+          }
+        },
+        _assets.get('thumbnail_Stage' + i).content, "STAGE_" + i + '\n' + stage_name[i], 255, 17));
     }
 
     this.music = _assets.get('music_0').content; // background music of menu stage
@@ -797,7 +872,13 @@ class menu{
       this.buttons[i].enable(ifEnable);
     }
   }
-  // render the menu
+  // render the stage select buttons
+  renderButton(){
+    for(let i in this.buttons){
+      this.buttons[i].render();
+    }
+  }
+  // render the menu background
   render(canvas = window){
     // roll down the scroll
     this.pos_y += 0.5;
@@ -813,11 +894,6 @@ class menu{
     for(let i = 0; i < this.scroll.length; i++){
       _stageManager.stages[this.scrollNum[i]].render(this.scroll[i]);
       canvas.image(this.scroll[i], 0, this.pos_y + i * _sceneheight);
-    }
-
-    // render the buttons
-    for(let i in this.buttons){
-      this.buttons[i].render();
     }
   }
 }
@@ -859,6 +935,7 @@ class spriteManager{
       width/2, -100, width/2, height/2, _assets.get('score_board').content, _assets.get('button_small').content);
 
     this.floating_texts = []; // floating texts
+    this.gravity_objects = []; // objects influenced by the gravity
   }
   // reset all the sprites
   reset(){
@@ -881,11 +958,28 @@ class spriteManager{
         if(this.floating_texts[i].render(_playSpace)) this.floating_texts.splice(i, 1);
       }
     }
+    let gobj = this.gravity_objects;
+    // render all the gravity objects
+    if(gobj.length > 0){
+      for(let i in gobj){
+        gobj[i].render();
+        if(gobj[i].update()) gobj.splice(i, 1);
+      }
+    }
   }
 
   // create a new floating text
-  createFloatingText(x, y, txt, mode = "vertical_float", size = 26, color = '255, 255, 255'){
-    this.floating_texts.push(new floatingText(x, y, txt, mode, size, color ));
+  createFloatingText(x, y, txt, mode = "vertical_float", size = 26, color = '255, 255, 255', ifOutline){
+    this.floating_texts.push(new floatingText(x, y, txt, mode, size, color, ifOutline));
+  }
+  // create a new colored bar
+  createColorBar(x, y, vx, vy){
+    this.gravity_objects.push(new gravityObjects(x, y, vx, vy));
+  }
+  boost(canvas = window){
+    for(let i = 0; i < 50; i++){
+      this.createColorBar(canvas.width/2, canvas.height/2, random(-8, 8), random(-1, -10));
+    }
   }
 }
 // sprites refer to all the individual changable elements on the screen
@@ -1013,8 +1107,9 @@ class courageGauge extends sprite{
       this.target_value[topic_num] = 0; // clear the courage gauge
       _assets.get('success').content.play(); // play the success sound
       _assets.get('cheer').content.play(); // play the cheer sound
-      _spriteManager.createFloatingText(-100, 70, "SUCCESS", "horizontal_flash", 33, "255, 255, 255"); // create floating text
-      _beatManager.createBeat(this.pos_x, this.pos_y, topic_colors[topic_num], 80, 200);
+      _spriteManager.createFloatingText(-100, 70, "SUCCESS", "horizontal_flash", 33, "0, 0, 0", true); // create floating text
+      _spriteManager.boost(); // create a boost
+      _beatManager.createBeat(this.pos_x, this.pos_y, topic_colors[topic_num], 80, 200); // create the beat
       _stageManager.protagonistStartTalking = true; // protagonist start talking
       _spriteManager.score_board.success_speak ++; // success speak +1
     }
@@ -1303,10 +1398,20 @@ class character extends sprite{
     this.isSlient = isSlient; // if the character never speaks
     this.bubble_pos = bubble_pos; // relative position of dialogue bubble: true-left, false-right
     this.isTalking = false; // if the character is talking
+    this.isThumbup = false; // if the character thumb up
   }
 
   startTalking(){
     this.isTalking = true;
+  }
+  thumbup(toggle){
+    if(toggle){
+      this.isTalking = true;
+      this.isThumbup = true;
+    }else{
+      this.isTalking = false;
+      this.isThumbup = false;
+    }
   }
   // render the character
   render(canvas = _sceneSpace){
@@ -1319,8 +1424,13 @@ class character extends sprite{
       if(this.isTalking){
         canvas.image(this.imgs[s + 2], x, y);
         // render the bubble
-        if(this.bubble_pos) canvas.image(_assets.get('d_' + _spriteManager.topic_board.curTopic + 2).content, x - 68, _sceneheight - 120); // left
-        else canvas.image(_assets.get('d_' + _spriteManager.topic_board.curTopic + 1).content, x + 26, _sceneheight - 120); // right
+        if(!this.isThumbup){
+          if(this.bubble_pos) canvas.image(_assets.get('d_' + _spriteManager.topic_board.curTopic + 2).content, x - 68, _sceneheight - 120); // left
+          else canvas.image(_assets.get('d_' + _spriteManager.topic_board.curTopic + 1).content, x + 26, _sceneheight - 120); // right
+        }else{ // thumb up
+          if(this.bubble_pos) canvas.image(_assets.get('d_52').content, x - 68, _sceneheight - 120); // left
+          else canvas.image(_assets.get('d_51').content, x + 26, _sceneheight - 120); // right
+        }
       }else{
         canvas.image(this.imgs[s], x, y);
       }
@@ -1330,7 +1440,7 @@ class character extends sprite{
 
 // floating text
 class floatingText extends sprite{
-  constructor(x, y, txt, mode, size = 26, color = '255, 255, 255'){
+  constructor(x, y, txt, mode, size = 26, color = '255, 255, 255', ifOutline = false){
     switch(mode){
       case "vertical_float":
         super(x, y, x, y - 20);
@@ -1344,6 +1454,7 @@ class floatingText extends sprite{
     this.mode = mode;
     this.size = size ; // size of the text
     this.color = color; // color of the text(string)
+    this.ifOutline = ifOutline; // if the text has outline
   }
 
   render(canvas = window){
@@ -1362,6 +1473,10 @@ class floatingText extends sprite{
     }
 
     canvas.push();
+    if(this.ifOutline){
+      canvas.strokeWeight(3);
+      canvas.stroke(255);
+    }
     canvas.fill('rgba(' + this.color + ',' + apl + ')');
     canvas.textSize(this.size);
     canvas.textAlign(CENTER);
@@ -1388,20 +1503,6 @@ class cusButton{ // (x position, y position, width, height, event listener, butt
     this.text_size = text_size;
     this.enabled = false; // if the button is enabled
     this.Clicked = false;
-
-    // actual DOM button
-    // this.btn = createGraphics(width, height);
-    // this.btn.mouseClicked(func);
-    // this.btn.mouseOver(function(){console.log('kkk');});
-    
-    // this.btn = createButton(text);
-    // this.btn.position(x, y);
-    // this.btn.mouseClicked(func);
-    // this.btn.disabled = true;
-    // this.btn.size(width, height);
-    // // this.btn.style('visibility', 'hidden');
-    // this.btn.mouseOver(function(){this.mouseon = true;}.bind(this));
-    // this.btn.mouseOut(function(){this.mouseon = false;}.bind(this));
   }
 
   // enable
@@ -1409,17 +1510,28 @@ class cusButton{ // (x position, y position, width, height, event listener, butt
     this.enabled = isEnabled;
   }
 
-  // check if the button is clicked
-  ifClicked(){
+  // check if the mouse is on the button
+  ifMouseOn(){
     let x = this.pos_x + this.offset_x, y = this.pos_y + this.offset_y, w = this.width, h = this.height;
     let mx = mouseX, my = mouseY;
-    // check if the mouse is on the button
-    if(mx > x + w || mx < x || my > y + h || my < y) this.Clicked = false;
-    else{
+    if(mx > x + w || mx < x || my > y + h || my < y)
+      return false;
+    else return true;
+  }
+
+  // check if the button is clicked
+  ifClicked(){
+    if(this.ifMouseOn() && !_mouseBuffer){
       this.Clicked = true;
       _assets.get('clickbutton').content.play(); // play the button clicked sound
       this.func(); // trigger the button
-    }
+      // start buffer
+      _mouseBuffer = true;
+      _mouseBufferTimer = setTimeout(function(){
+        _mouseBuffer = false;
+        clearTimeout(_mouseBufferTimer);
+      }, 500);
+    }else this.Clicked = false;
   }
 
   render(canvas = window){
@@ -1444,7 +1556,70 @@ class cusButton{ // (x position, y position, width, height, event listener, butt
     canvas.pop();
   }
 }
+class cusButtonImg extends cusButton{
+  constructor(x, y, width, height, func, func_mo, img, text = '', text_col = 255, text_size = 24, offsetX = 0, offsetY = 0){
+    super(x, y, width, height, func, img, text, text_col, text_size, offsetX, offsetY);
+    this.func_mouseon = func_mo;
+  }
 
+  render(canvas = window){
+    let x = this.pos_x, y = this.pos_y, w = this.width, h = this.height;
+    // check if the button is clicked
+    if(this.enabled && _isMousePressed && !this.Clicked) this.ifClicked();
+    if(!_isMousePressed && this.Clicked) this.Clicked = false;
+
+    canvas.push();
+    canvas.imageMode(CORNER);
+    canvas.textFont(text_font);
+    canvas.textAlign(CENTER);
+    canvas.textSize(this.text_size);
+    canvas.noStroke();
+    canvas.image(this.imgs, x, y); // render the image
+    if(!this.Clicked){ // if the button is not clicked
+      if(this.ifMouseOn()){ // check if the mouse is on the button
+        canvas.fill(0, 120);
+        canvas.rect(x, y, w, h);
+        canvas.fill(255);
+        canvas.text(this.text, x + w/2, y + h/2 - 22);
+        this.func_mouseon(canvas, x, y);
+      }
+    }else{
+      canvas.fill(255, 75);
+      canvas.rect(x, y, w, h);
+    }
+    canvas.fill(this.text_color);
+    canvas.pop();
+  }
+}
+
+// gravity objects
+class gravityObjects{
+  constructor(x, y, vx, vy){
+    this.pos_x = x;
+    this.pos_y = y;
+    this.spd_x = vx;
+    this.spd_y = vy;
+    this.color = color(random(20, 220), random(20, 220), random(20, 220));
+  }
+  update(canvas = window){
+    this.spd_y += 0.3;
+    this.pos_x += this.spd_x;
+    this.pos_y += this.spd_y;
+    // check if the object collide with the canvas border
+    let x = this.pos_x;
+    let y = this.pos_y;
+    if(x < 0 || x > canvas.width || y < 0 || y > canvas.height) return true;
+    else return false;
+  }
+  render(canvas = window){
+    canvas.push();
+    canvas.rectMode(CENTER);
+    canvas.noStroke();
+    canvas.fill(this.color);
+    canvas.rect(this.pos_x, this.pos_y, 6, 6);
+    canvas.pop();
+  }
+}
 // scroll text
 // <---------- Animated Objects ---------->
 // <---------- Dynamic Objects ---------->
@@ -1644,7 +1819,9 @@ class fragment extends dynamicObj{
   constructor(x, y, type, dir, spd, size = 15){
     super(x, y, spd, size);
     this.dir = dir; // moving direction of the fragment(angle(DEGREE): 0-360)
+    this.rotate = 0; // rotation offset of the fragment
     this.type = type; // type of the fragment 0-4: magenta(#ff00aa), blue(#00aaf0), purple(#aa00ff), orange(#ffaa00), green(#c9e3ac)
+    // image of the fragment
   }
   move(){ // movement mode: normal, spiral
     let spd = this.spd;
@@ -1655,14 +1832,19 @@ class fragment extends dynamicObj{
   // render the fragment
   render(canvas = _playSpace){
     this.move(); // before rendered, check the moving status
-    canvas.image(_assets.get('frags')[this.type].content, this.pos_x, this.pos_y);
+    this.rotate += this.spd / 3;
+
+    canvas.push();
+    canvas.translate(this.pos_x, this.pos_y);
+    canvas.rotate(this.rotate);
+    canvas.image(_assets.get('frags_shape')[this.type].content, 0, 0);
+    canvas.pop();
   }
 }
 // the torpedo
 class torpedo extends fragment{
   constructor(x, y, type, dir, spd, size = 18){
     super(x, y, type, dir, spd, size);
-    this.rotate = 0;
   }
   // render the torpedo
   render(canvas = _playSpace){
