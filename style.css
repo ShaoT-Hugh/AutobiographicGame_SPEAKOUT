@@ -1,8 +1,38 @@
 html, body {
+  height: 100%;
+}
+
+body {
   margin: 0;
-  padding: 0;
+  padding: 2em;
+  display: flex;
+
+  /* This centers our sketch horizontally. */
+  justify-content: center;
+
+  /* This centers our sketch vertically. */
+  align-items: center;
+
+  background-color: rgb(50, 50, 50);
 }
 
 canvas {
   display: block;
+}
+
+#main {
+  outline: snow solid 2px;
+}
+
+p {
+  font-size: 12pt;
+  font-family: Helvetica, Arial, sans-serif;
+  line-height: 20pt;
+  margin-bottom: 2em;
+  text-align: center;
+  color: white;
+}
+
+a:visited {
+  color: slateblue;
 }

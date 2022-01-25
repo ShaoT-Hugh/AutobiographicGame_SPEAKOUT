@@ -100,7 +100,8 @@ function preload(){
 
 }
 function setup(){
-  createCanvas(_Width, _Height);
+  var myCanvas = createCanvas(_Width, _Height);
+  myCanvas.parent("main");
   angleMode(DEGREES);
   noStroke();
 
